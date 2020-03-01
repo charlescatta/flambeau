@@ -6,7 +6,8 @@ from torch import nn, optim, functional
 from flambeau.callbacks import train_callback, TrainingContext, Stages
 from flambeau.callbacks.gpu import to_gpu_callbacks
 
-BATCH_SIZE = 32
+N_EPOCHS = 2
+BATCH_SIZE = 128
 LR=3e-3
 
 tfms = transforms.Compose([
@@ -42,7 +43,7 @@ def print_epochs(ctx: TrainingContext):
 @train_callback(Stages.end_batch)
 def print_iters(ctx: TrainingContext):
   """ Print iterations after batch end """
-  print(f"Number of batches processed: {ctx.iters}")
+  print(f"Number of batches processed: {ctx.iters} | Loss: {ctx.loss.item():.3f}")
 
 # Any function that receives one positional parameter can be
 # registered as a callback, it will be called at every stage of the
@@ -51,6 +52,12 @@ def some_normal_func(ctx):
   """ This will appear in the callbacks summary """
   if ctx.stage == Stages.start_fit:
     print("QUICK GET THE CAMERA, IT'S WORKING")
+  if ctx.iters < 3:
+    print(f"Hello from {ctx.stage.name}")
+  if ctx.iters == 3 and ctx.stage == Stages.start_batch:
+    print("Ok gonna stop spamming now")
+
+# TODO: Write validation pass example callback
 
 callbacks = [print_iters, some_normal_func]
 
@@ -60,6 +67,8 @@ if torch.cuda.device_count() > 0:
 else:
   print("No GPU found, will train on CPU")
 
+# Print a summary of the callbacks
 flambeau.callbacks.summarize(callbacks)
 
-flambeau.fit(1, m, optimizer, loss_func, train_dl, callbacks=callbacks)
+# Start training
+flambeau.fit(N_EPOCHS, m, optimizer, loss_func, train_dl, callbacks=callbacks)
