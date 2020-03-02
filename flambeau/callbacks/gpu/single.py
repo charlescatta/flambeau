@@ -3,7 +3,7 @@
 """
 import torch
 from typing import Union
-from ..context import TrainingContext, train_callback, Stages
+from ..context import TrainingContext, train_callback, Stage
 
 def SendModelToDevice(device: Union[str, torch.device]):
   """ Create a callback that sends the model to the specified device at training startup """
@@ -11,7 +11,7 @@ def SendModelToDevice(device: Union[str, torch.device]):
     ctx.model = ctx.model.to(device=device)
   func.__doc__ = f"Send model to device {device}"
   func.__name__ = f"send_model_to_{device}" # Is this legal?
-  return train_callback(Stages.start_fit)(func)
+  return train_callback(Stage.start_fit)(func)
 
 def SendBatchToDevice(device: Union[str, torch.device]):
   """ Create a callback that sends the current minibatch to the specified device at each minibatch start """
@@ -20,7 +20,7 @@ def SendBatchToDevice(device: Union[str, torch.device]):
     ctx.y_b = ctx.y_b.to(device=device)
   func.__doc__ = f"Send batch to device {device}"
   func.__name__ = f"send_batch_to_{device}" # Is this legal?
-  return train_callback(Stages.start_batch)(func)
+  return train_callback(Stage.start_batch)(func)
 
 cuda_model = SendModelToDevice(torch.device('cuda'))
 cuda_batch = SendBatchToDevice(torch.device('cuda'))

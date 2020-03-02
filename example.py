@@ -3,7 +3,7 @@ import torchvision
 import flambeau
 from torchvision import transforms, models
 from torch import nn, optim, functional
-from flambeau.callbacks import train_callback, TrainingContext, Stages
+from flambeau.callbacks import train_callback, TrainingContext, Stage, Callback
 from flambeau.callbacks.gpu import to_gpu_callbacks
 
 N_EPOCHS = 2
@@ -31,35 +31,35 @@ m = get_model(n_classes)
 optimizer = optim.AdamW(m.parameters(), lr=LR)
 loss_func = nn.functional.cross_entropy
 
-# This callback will be automatically registered
-# and does not need to be passed to the fit function
-@train_callback(Stages.start_epoch, auto=True)
+@train_callback(Stage.start_epoch, auto=True)
 def print_epochs(ctx: TrainingContext):
   """ Prints current epoch number at epoch start """
   print(f"Epoch {ctx.epoch + 1}/{ctx.n_epochs}")
 
-
-# This callback can be passed to the fit function
-@train_callback(Stages.end_batch)
+@train_callback(Stage.end_batch, auto=True)
 def print_iters(ctx: TrainingContext):
   """ Print iterations after batch end """
   print(f"Number of batches processed: {ctx.iters} | Loss: {ctx.loss.item():.3f}")
 
-# Any function that receives one positional parameter can be
-# registered as a callback, it will be called at every stage of the
-# training loop
 def some_normal_func(ctx):
   """ This will appear in the callbacks summary """
-  if ctx.stage == Stages.start_fit:
+  if ctx.stage == Stage.start_fit:
     print("QUICK GET THE CAMERA, IT'S WORKING")
   if ctx.iters < 3:
     print(f"Hello from {ctx.stage.name}")
-  if ctx.iters == 3 and ctx.stage == Stages.start_batch:
+  if ctx.iters == 3 and ctx.stage == Stage.start_batch:
     print("Ok gonna stop spamming now")
+
+class ValidatorCallback(Callback):
+  def __init__(self):
+    self.tracked_epochs = 0
+  
+  def start_fit(self):
+    print(f'Hello {self.tracked_epochs}')
 
 # TODO: Write validation pass example callback
 
-callbacks = [print_iters, some_normal_func]
+callbacks = [some_normal_func]
 
 if torch.cuda.device_count() > 0:
   print("CUDA GPU found, will use one gpu for training")
@@ -68,7 +68,6 @@ else:
   print("No GPU found, will train on CPU")
 
 # Print a summary of the callbacks
-flambeau.callbacks.summarize(callbacks)
-
+flambeau.callbacks.summarize(callbacks, show_internal=True)
 # Start training
 flambeau.fit(N_EPOCHS, m, optimizer, loss_func, train_dl, callbacks=callbacks)

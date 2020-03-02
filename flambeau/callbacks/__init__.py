@@ -1,2 +1,2 @@
-from .context import Stages, TrainingContext, train_callback
+from .context import Stage, TrainingContext, Callback, train_callback
 from .utils import summarize
