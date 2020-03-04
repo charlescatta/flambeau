@@ -59,13 +59,24 @@ class ValidatorCallback(Callback):
 
 # TODO: Write validation pass example callback
 
-callbacks = [some_normal_func]
 
 if torch.cuda.device_count() > 0:
   print("CUDA GPU found, will use one gpu for training")
   callbacks = [*callbacks, *to_gpu_callbacks]
 else:
   print("No GPU found, will train on CPU")
+
+class Recorder(Callback):
+  """ Metrics recording class """
+  def __init__(self):
+    self.internal_state = 42
+  
+  def after_backward(self, ctx):
+    """ print data after backwards """
+    print(self.internal_state, '\n\n\n')
+    
+
+callbacks = [some_normal_func, Recorder()]
 
 # Print a summary of the callbacks
 flambeau.callbacks.summarize(callbacks, show_internal=True)

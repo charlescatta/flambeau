@@ -30,7 +30,7 @@ def compute_loss_grad(ctx: TrainingContext):
 
 @internal_train_callback(Stage.after_step)
 def compute_step(ctx: TrainingContext):
-  """ Backpropagation """
+  """ optimizer backpropagation """
   ctx.optimizer.step()
 
 @internal_train_callback(Stage.after_step)

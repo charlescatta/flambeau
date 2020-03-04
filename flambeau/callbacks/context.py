@@ -2,7 +2,7 @@ import torch
 import warnings
 from torch import optim, nn
 from enum import Enum, auto
-from typing import Callable, Union, List, Iterable, Tuple, Optional, TypeVar
+from typing import Callable, Union, List, Iterable, Tuple, Optional
 
 class Stage(Enum):
   start_fit = auto()
@@ -15,7 +15,7 @@ class Stage(Enum):
   end_batch = auto()
   end_epoch = auto()
   end_fit = auto()
-
+stage_names = [s.name for s in Stage]
 Stage.all: Tuple[Stage] = tuple(s for s in Stage)
 
 class CallbackFunc(Callable):
@@ -40,14 +40,13 @@ class CallbackFunc(Callable):
   def __new__(cls, func: Callable, *args, **kwargs):
     if isinstance(func, CallbackFunc):
       return func
-    return super(CallbackFunc, cls).__new__(cls)
+    return super(CallbackFunc, cls).__new__(cls, *args, **kwargs)
   
   def __call__(self, *args, **kwargs):
     return self.func(*args, **kwargs)
   
   def __repr__(self):
     return f"{self.func.__name__}{': ' + self.func.__doc__ if self.func.__doc__  else ''}"
-
 
 class CallbacksDict(dict):
   def __init__(self, callbacks: Iterable[Callable] = []):
@@ -56,11 +55,26 @@ class CallbacksDict(dict):
       self[s] = []
     self.register(callbacks)
 
-  def register(self, callbacks: Callable):
+  def register(self, callbacks: Iterable[Callable]):
     for c in callbacks:
-      c = CallbackFunc(c)
-      for stage in c.stage:
-        self[stage].append(c) 
+      if isinstance(c, Callback):
+        self.merge(c.to_dict())
+      else:
+        c = CallbackFunc(c)
+        for stage in c.stage:
+          self[stage].append(c)
+          # TODO: implement sorted insert
+    self.sort()
+  
+  def sort(self):
+    for s in Stage:
+      self[s] = list(sorted(self[s], key=lambda c: c._order))
+
+  def merge(self, other):
+    for stage in Stage:
+      self[stage] = [*self[stage], *other[stage]]
+    self.sort()
+    return self
   
   def __repr__(self):
     out = ""
@@ -71,11 +85,21 @@ class CallbacksDict(dict):
     return out
 
 class Callback:
-  def __init__(self):
-    pass
-
+  _order = 0
+  _is_internal=False
+  @staticmethod
+  def method_to_cbfunc(instance, name):
+    def wrapper(*args, **kwargs):
+      return getattr(instance, name)(*args, **kwargs)
+    
+    wrapper.__name__ = type(instance).__name__
+    wrapper.__doc__ = getattr(instance, name).__doc__ or type(instance).__doc__ or None
+    
+    return CallbackFunc(wrapper, Stage[name], order=instance._order, _is_internal=instance._is_internal)
+  
   def to_dict(self) -> CallbacksDict:
-    return CallbacksDict(list(filter(lambda x: x != None, (self[s.name] for s in Stage))))
+    methods = [ method for method in dir(self) if method in stage_names ]
+    return CallbacksDict([ Callback.method_to_cbfunc(self, method) for method in methods ])
 
 class TrainingContext():
   globally_registered_callbacks = []
