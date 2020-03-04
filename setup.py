@@ -8,7 +8,7 @@ setup(name='Flambeau',
       author='Charles Catta',
       python_requires='>=3.7',
       author_email='charles.catta+git@gmail.com',
-      packages=find_packages())
+      packages=find_packages(include='./flambeau'))
 
 
 
