@@ -5,6 +5,8 @@ import torch
 from typing import Union
 from ..context import TrainingContext, train_callback, Stage
 
+
+
 def SendModelToDevice(device: Union[str, torch.device]):
   """ Create a callback that sends the model to the specified device at training startup """
   def func(ctx: TrainingContext):
